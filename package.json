@@ -1,0 +1,14 @@
+{
+  "name": "little-gallery",
+  "version": "1.0.0",
+  "description": "AI Artwork Gallery — enhances children's artwork photos via OpenAI gpt-image-1",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "multer": "^1.4.5-lts.1"
+  }
+}

@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Little Gallery — AI Artwork Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#2563EB;
+    --primary-dark:#1D4ED8;
+    --accent:#7C3AED;
+    --success:#10B981;
+    --bg:#F8FAFC;
+    --card:#FFFFFF;
+    --ink:#0F172A;
+    --ink-soft:#64748B;
+    --line:#E2E8F0;
+    --radius:20px;
+    --radius-sm:12px;
+    --shadow-sm:0 1px 2px rgba(15,23,42,.04), 0 1px 3px rgba(15,23,42,.06);
+    --shadow-md:0 8px 24px rgba(15,23,42,.08);
+    --shadow-lg:0 20px 48px rgba(15,23,42,.14);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Inter',sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .hand{font-family:'Caveat',cursive;}
+  .hidden{display:none !important;}
+  button{font-family:inherit;cursor:pointer;}
+  ::selection{background:#DBEAFE;}
+
+  /* ---------- Shell ---------- */
+  #app{max-width:1360px;margin:0 auto;padding:28px 32px 100px;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;letter-spacing:-.02em;}
+  .brand-mark{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,var(--primary),var(--accent));position:relative;flex-shrink:0;}
+  .brand-mark::after{content:"";position:absolute;inset:8px;border-radius:6px;background:#fff;opacity:.9;clip-path:polygon(20% 100%,50% 30%,80% 100%);}
+
+  /* ---------- Stepper ---------- */
+  .stepper{display:flex;align-items:center;gap:0;background:var(--card);border-radius:999px;padding:6px;box-shadow:var(--shadow-sm);border:1px solid var(--line);}
+  .step{display:flex;align-items:center;gap:8px;padding:9px 18px;border-radius:999px;font-size:14px;font-weight:600;color:var(--ink-soft);transition:.3s;}
+  .step .dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:#EEF2F7;color:var(--ink-soft);transition:.3s;}
+  .step.done .dot{background:var(--success);color:#fff;}
+  .step.active{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;box-shadow:0 4px 14px rgba(37,99,235,.35);}
+  .step.active .dot{background:rgba(255,255,255,.25);color:#fff;}
+  .step.done{color:var(--success);}
+  .step-sep{width:20px;height:1.5px;background:var(--line);margin:0 2px;}
+
+  h1.page-title{font-size:30px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px;}
+  p.page-sub{color:var(--ink-soft);margin:0 0 24px;font-size:15px;}
+
+  /* ============ PAGE 1 ============ */
+  .p1-grid{display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:start;}
+  .card{background:var(--card);border-radius:var(--radius);border:1px solid var(--line);box-shadow:var(--shadow-sm);}
+  .dropzone{
+    border:2px dashed #C7D2FE;border-radius:var(--radius);
+    background:linear-gradient(180deg,#F5F7FF,#FFFFFF);
+    padding:56px 24px;text-align:center;transition:.25s;cursor:pointer;position:relative;overflow:hidden;
+  }
+  .dropzone.drag{border-color:var(--primary);background:#EEF2FF;transform:scale(1.005);}
+  .dropzone .upicon{width:64px;height:64px;margin:0 auto 18px;border-radius:18px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-md);}
+  .dropzone h3{font-size:20px;font-weight:700;margin:0 0 4px;}
+  .dropzone .browse{color:var(--primary);font-weight:600;}
+  .tags{display:flex;gap:8px;justify-content:center;margin-top:18px;flex-wrap:wrap;}
+  .tag{background:#F1F5F9;color:var(--ink-soft);font-size:12px;font-weight:600;padding:5px 12px;border-radius:999px;}
+  .cap{margin-top:14px;font-size:13px;color:var(--ink-soft);}
+
+  .section-head{display:flex;align-items:center;justify-content:space-between;margin:24px 0 12px;}
+  .section-head h4{margin:0;font-size:15px;font-weight:700;}
+  .section-head span{font-size:13px;color:var(--ink-soft);}
+
+  .file-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px;}
+  .file-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px;position:relative;box-shadow:var(--shadow-sm);transition:.2s;}
+  .file-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);}
+  .file-thumb{width:100%;aspect-ratio:1;border-radius:9px;overflow:hidden;background:#F1F5F9;position:relative;}
+  .file-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .file-name{font-size:11.5px;font-weight:600;margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .progress-track{height:5px;background:#EEF2F7;border-radius:99px;margin-top:6px;overflow:hidden;}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:99px;transition:width .4s;}
+  .remove-btn{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:#fff;border:1px solid var(--line);color:#94A3B8;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:var(--shadow-sm);}
+  .remove-btn:hover{color:#EF4444;border-color:#FCA5A5;}
+
+  .info-card{margin-top:24px;padding:20px 22px;display:flex;gap:16px;background:linear-gradient(135deg,#EEF2FF,#F5F3FF);border:1px solid #E0E7FF;}
+  .info-card .ic{width:38px;height:38px;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:var(--shadow-sm);}
+  .info-card ul{margin:8px 0 0;padding-left:18px;font-size:13.5px;color:#3B3F6B;line-height:1.7;}
+  .info-card strong{font-size:14.5px;}
+
+  /* sidebar stats */
+  .sidebar{position:sticky;top:20px;padding:22px;display:flex;flex-direction:column;gap:18px;}
+  .sidebar h4{margin:0 0 2px;font-size:14px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
+  .stat-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--line);}
+  .stat-row:last-child{border-bottom:none;}
+  .stat-label{font-size:13px;color:var(--ink-soft);}
+  .stat-value{font-size:18px;font-weight:800;}
+  .stat-value.blue{color:var(--primary);}
+  .stat-value.violet{color:var(--accent);}
+  .mini-ring{width:44px;height:44px;flex-shrink:0;}
+  .primary-btn{
+    background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border:none;
+    padding:13px 22px;border-radius:14px;font-weight:700;font-size:14.5px;display:flex;align-items:center;gap:8px;
+    box-shadow:0 6px 18px rgba(37,99,235,.35);transition:.2s;
+  }
+  .primary-btn:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(37,99,235,.45);}
+  .primary-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none;}
+  .primary-btn.block{width:100%;justify-content:center;}
+  .ghost-btn{background:#fff;border:1px solid var(--line);padding:10px 16px;border-radius:12px;font-weight:600;font-size:13.5px;color:var(--ink);display:flex;align-items:center;gap:6px;}
+  .ghost-btn:hover{background:#F8FAFC;}
+
+  /* ============ PAGE 2 ============ */
+  .p2-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:24px;align-items:start;}
+  .loader-card{padding:44px 32px;text-align:center;}
+  .orb-wrap{position:relative;width:220px;height:220px;margin:0 auto 22px;}
+  .orb-ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(var(--primary) 0deg,var(--accent) calc(var(--pct,65)*3.6deg),#EEF2F7 calc(var(--pct,65)*3.6deg));
+    mask:radial-gradient(farthest-side,transparent calc(100% - 14px),#000 calc(100% - 14px));
+    -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 14px),#000 calc(100% - 14px));
+    transition:background 1s linear;animation:spin 6s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .orb-core{position:absolute;inset:22px;border-radius:50%;background:#fff;box-shadow:var(--shadow-md);display:flex;align-items:center;justify-content:center;flex-direction:column;}
+  .orb-core .pct{font-size:34px;font-weight:800;letter-spacing:-.02em;}
+  .orb-core .pct-label{font-size:11px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
+  .float-card{position:absolute;width:46px;height:46px;border-radius:10px;overflow:hidden;box-shadow:var(--shadow-md);animation:float 3.5s ease-in-out infinite;border:3px solid #fff;}
+  .float-card img{width:100%;height:100%;object-fit:cover;display:block;}
+  @keyframes float{0%,100%{transform:translateY(0) rotate(var(--r,0deg));}50%{transform:translateY(-10px) rotate(var(--r,0deg));}}
+
+  .loader-card h2{font-size:23px;font-weight:800;margin:6px 0 4px;}
+  .loader-card p.sub{color:var(--ink-soft);font-size:14.5px;margin:0 0 22px;}
+  .bar-track{height:10px;background:#EEF2F7;border-radius:99px;overflow:hidden;max-width:420px;margin:0 auto;}
+  .bar-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:99px;transition:width .6s ease;position:relative;}
+  .bar-fill::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:shimmer 1.4s infinite;}
+  @keyframes shimmer{0%{transform:translateX(-100%);}100%{transform:translateX(100%);}}
+  .bar-pct{margin-top:8px;font-weight:700;font-size:14px;color:var(--primary);}
+
+  .timeline{padding:22px;margin-top:20px;}
+  .tl-item{display:flex;align-items:center;gap:12px;padding:11px 0;}
+  .tl-dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;background:#EEF2F7;color:var(--ink-soft);font-weight:700;}
+  .tl-item.done .tl-dot{background:var(--success);color:#fff;}
+  .tl-item.current .tl-dot{background:var(--primary);color:#fff;box-shadow:0 0 0 5px rgba(37,99,235,.15);animation:pulse 1.4s infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(37,99,235,.15);}50%{box-shadow:0 0 0 8px rgba(37,99,235,.06);}}
+  .tl-text{font-size:14px;font-weight:600;}
+  .tl-item.waiting .tl-text{color:#94A3B8;font-weight:500;}
+  .tl-item.current .tl-text{color:var(--primary);}
+
+  .preview-card{padding:20px;}
+  .preview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}
+  .preview-slot{aspect-ratio:1;border-radius:14px;background:#F1F5F9;overflow:hidden;position:relative;}
+  .preview-slot img{width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(.9);transition:opacity .6s ease, transform .6s ease;}
+  .preview-slot.filled img{opacity:1;transform:scale(1);}
+  .preview-slot:not(.filled)::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#F1F5F9 25%,#F8FAFC 37%,#F1F5F9 63%);background-size:400% 100%;animation:sk 1.4s ease infinite;}
+  @keyframes sk{0%{background-position:100% 0;}100%{background-position:0 0;}}
+
+  .stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:22px;}
+  .mini-stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;text-align:center;box-shadow:var(--shadow-sm);}
+  .mini-stat .val{font-size:22px;font-weight:800;}
+  .mini-stat .lbl{font-size:12px;color:var(--ink-soft);font-weight:600;margin-top:2px;}
+
+  /* ============ PAGE 3 ============ */
+  .p3-shell{display:block;}
+  .g-sidebar{position:sticky;top:20px;display:flex;flex-direction:column;gap:22px;}
+  .nav-group h5{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:#94A3B8;font-weight:700;margin:0 0 8px 4px;}
+  .nav-link{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-radius:11px;font-size:14px;font-weight:600;color:var(--ink);}
+  .nav-link .l{display:flex;align-items:center;gap:10px;}
+  .nav-link:hover{background:#F1F5F9;}
+  .nav-link.active{background:linear-gradient(135deg,#EEF2FF,#F5F3FF);color:var(--primary);}
+  .nav-link .count{font-size:11.5px;color:#94A3B8;font-weight:600;}
+  .nav-link.active .count{color:var(--primary);}
+  .filter-block{padding:16px;}
+  .filter-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:13.5px;font-weight:600;color:var(--ink-soft);border-bottom:1px solid var(--line);}
+  .filter-row:last-child{border-bottom:none;}
+  .filter-row:hover{color:var(--ink);}
+
+  .g-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:14px;}
+  .g-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .search-box{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 14px;font-size:13.5px;min-width:200px;}
+  .search-box input{border:none;outline:none;font-size:13.5px;width:100%;font-family:inherit;}
+  .icon-toggle{display:flex;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .icon-toggle button{padding:9px 12px;background:none;border:none;color:var(--ink-soft);}
+  .icon-toggle button.active{background:#EEF2FF;color:var(--primary);}
+
+  .masonry{column-count:4;column-gap:16px;}
+  @media (max-width:1100px){.masonry{column-count:3;}}
+  .art-card{break-inside:avoid;margin-bottom:16px;position:relative;border-radius:18px;overflow:hidden;background:#fff;box-shadow:var(--shadow-sm);transition:.25s;border:1px solid var(--line);}
+  .art-card:hover{transform:translateY(-4px) scale(1.01);box-shadow:var(--shadow-lg);}
+  .art-card img{width:100%;display:block;}
+  .art-check{position:absolute;top:10px;left:10px;width:22px;height:22px;border-radius:7px;background:rgba(255,255,255,.9);border:2px solid #fff;box-shadow:var(--shadow-sm);opacity:0;transition:.2s;z-index:2;}
+  .art-card:hover .art-check, .art-card.selected .art-check{opacity:1;}
+  .art-card.selected .art-check{background:var(--primary);border-color:var(--primary);}
+  .art-card.selected{outline:3px solid var(--primary);outline-offset:-3px;}
+  .art-fav{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;opacity:0;transition:.2s;z-index:2;font-size:14px;}
+  .art-card:hover .art-fav, .art-fav.on{opacity:1;}
+  .art-fav.on{color:#EF4444;}
+  .art-overlay{position:absolute;left:0;right:0;bottom:0;padding:10px 12px;background:linear-gradient(0deg,rgba(15,23,42,.7),transparent);opacity:0;transition:.2s;display:flex;align-items:center;justify-content:space-between;}
+  .art-card:hover .art-overlay{opacity:1;}
+  .art-overlay .fname{color:#fff;font-size:11.5px;font-weight:600;}
+  .art-overlay .acts{display:flex;gap:6px;}
+  .art-overlay .acts button{width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.2);border:none;color:#fff;font-size:12px;backdrop-filter:blur(4px);}
+  .tape{position:absolute;top:-6px;left:50%;transform:translateX(-50%) rotate(-3deg);width:56px;height:20px;background:rgba(255,236,179,.75);border:1px solid rgba(0,0,0,.03);z-index:3;}
+
+  .bulk-toolbar{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(120px);opacity:0;background:var(--ink);color:#fff;border-radius:16px;padding:10px 12px;display:flex;align-items:center;gap:6px;box-shadow:var(--shadow-lg);z-index:40;transition:.3s;}
+  .bulk-toolbar.show{transform:translateX(-50%) translateY(0);opacity:1;}
+  .bulk-toolbar span{font-size:13px;font-weight:600;padding:0 10px;border-right:1px solid rgba(255,255,255,.15);margin-right:4px;}
+  .bulk-toolbar button{background:rgba(255,255,255,.08);color:#fff;border:none;padding:8px 13px;border-radius:10px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;}
+  .bulk-toolbar button:hover{background:rgba(255,255,255,.18);}
+  .bulk-toolbar button.danger:hover{background:#EF4444;}
+
+  /* modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.75);backdrop-filter:blur(6px);z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .modal-box{background:#fff;border-radius:24px;max-width:980px;width:100%;max-height:88vh;display:grid;grid-template-columns:1.4fr 1fr;overflow:hidden;box-shadow:var(--shadow-lg);}
+  .modal-img-wrap{background:#0F172A;display:flex;align-items:center;justify-content:center;position:relative;min-height:400px;}
+  .modal-img-wrap img{max-width:100%;max-height:80vh;object-fit:contain;}
+  .modal-nav{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;border:none;font-size:16px;}
+  .modal-nav:hover{background:rgba(255,255,255,.3);}
+  .modal-side{padding:24px;display:flex;flex-direction:column;gap:16px;overflow-y:auto;}
+  .modal-close{position:absolute;top:16px;right:16px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.9);border:none;font-size:14px;z-index:5;}
+  .ai-detail-row{display:flex;justify-content:space-between;font-size:13.5px;padding:8px 0;border-bottom:1px solid var(--line);}
+  .ai-detail-row b{font-weight:700;}
+  .modal-actions{display:flex;gap:8px;flex-wrap:wrap;}
+
+  /* Mobile */
+  .mobile-nav{display:none;}
+  @media (max-width:860px){
+    #app{padding:18px 16px 90px;}
+    .p1-grid,.p2-grid,.p3-shell{grid-template-columns:1fr;}
+    .stepper span.step-text{display:none;}
+    .masonry{column-count:2;column-gap:12px;}
+    .stat-cards{grid-template-columns:repeat(2,1fr);}
+    .modal-box{grid-template-columns:1fr;}
+    .mobile-nav{
+      display:flex;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);
+      padding:10px 18px calc(10px + env(safe-area-inset-bottom));justify-content:space-around;z-index:50;box-shadow:0 -6px 20px rgba(0,0,0,.05);
+    }
+    .mobile-nav a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;font-weight:700;color:#94A3B8;}
+    .mobile-nav a.active{color:var(--primary);}
+    .fab{position:fixed;bottom:78px;right:18px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border:none;font-size:22px;box-shadow:var(--shadow-lg);z-index:50;}
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="topbar">
+    <div class="brand"><div class="brand-mark"></div>Little Gallery</div>
+    <div class="stepper" id="stepper">
+      <div class="step" data-step="1"><div class="dot">1</div><span class="step-text">Upload Artwork</span></div>
+      <div class="step-sep"></div>
+      <div class="step" data-step="2"><div class="dot">2</div><span class="step-text">AI Processing</span></div>
+      <div class="step-sep"></div>
+      <div class="step" data-step="3"><div class="dot">3</div><span class="step-text">Gallery</span></div>
+    </div>
+  </div>
+
+  <!-- ================= PAGE 1 ================= -->
+  <div id="page1">
+    <h1 class="page-title">Generate new art from photos</h1>
+    <p class="page-sub">Upload up to 5 photos of artwork or inspiration — AI will learn from them to generate a brand new, stunning piece of art.</p>
+
+    <div class="p1-grid">
+      <div>
+        <div class="dropzone" id="dropzone">
+          <div class="upicon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 16V4M12 4L7 9M12 4l5 5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <h3>Drag &amp; drop artwork</h3>
+          <p style="margin:0;color:var(--ink-soft);font-size:14px;">or <span class="browse">browse files</span> from your device</p>
+          <div class="tags">
+            <span class="tag">JPG</span><span class="tag">PNG</span><span class="tag">HEIC</span><span class="tag">PDF</span>
+          </div>
+          <div class="cap">Up to 5 photos of the same artwork</div>
+          <input type="file" id="fileInput" multiple accept="image/*" style="display:none;">
+        </div>
+
+        <div class="section-head">
+          <h4>Uploaded files</h4>
+          <span id="fileCount">0 of 5</span>
+        </div>
+        <div class="file-grid" id="fileGrid"></div>
+
+        <div class="card info-card">
+          <div class="ic">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z" fill="#7C3AED"/></svg>
+          </div>
+          <div>
+            <strong>AI will generate a new artwork based on your photos:</strong>
+            <ul>
+              <li>Learn from the style and themes of your input</li>
+              <li>Expand into a large, expansive canvas</li>
+              <li>Populate the scene with many new objects and details</li>
+              <li>Preserve the charming essence of the original</li>
+              <li>Produce a bustling, imaginative result</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card sidebar">
+        <div>
+          <h4>Batch summary</h4>
+          <div class="stat-row"><span class="stat-label">Photos uploaded</span><span class="stat-value blue">0 photos</span></div>
+          <div class="stat-row"><span class="stat-label">Slots remaining</span><span class="stat-value">5 slots</span></div>
+          <div class="stat-row"><span class="stat-label">Total size</span><span class="stat-value">145 MB</span></div>
+          <div class="stat-row"><span class="stat-label">Est. processing time</span><span class="stat-value violet">~30 sec</span></div>
+        </div>
+        <button class="primary-btn block" id="uploadGenerateBtn">
+          Generate Gallery Image ✨
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PAGE 2 ================= -->
+  <div id="page2" class="hidden">
+    <h1 class="page-title">Generating your new artwork</h1>
+    <p class="page-sub">Please wait while AI creates your original art — this usually takes a few minutes.</p>
+
+    <div class="p2-grid">
+      <div>
+        <div class="card loader-card">
+          <div class="orb-wrap" id="orbWrap">
+            <div class="orb-ring" id="orbRing"></div>
+            <div class="orb-core"><div class="pct" id="orbPct">0%</div><div class="pct-label">Complete</div></div>
+          </div>
+          <h2>Generating your artwork</h2>
+          <p class="sub">Our AI is learning from your photos and creating something new.</p>
+          <div class="bar-track"><div class="bar-fill" id="barFill" style="width:0%"></div></div>
+          <div class="bar-pct" id="barPct">0%</div>
+        </div>
+
+        <div class="card timeline" id="timeline">
+          <div class="tl-item" data-k="upload"><div class="tl-dot">✓</div><div class="tl-text">Upload complete</div></div>
+          <div class="tl-item" data-k="detect"><div class="tl-dot">✓</div><div class="tl-text">Analyzing style and themes</div></div>
+          <div class="tl-item" data-k="crop"><div class="tl-dot">✓</div><div class="tl-text">Learning from inputs</div></div>
+          <div class="tl-item" data-k="bg"><div class="tl-dot">•</div><div class="tl-text">Generating new artwork</div></div>
+          <div class="tl-item" data-k="enhance"><div class="tl-dot">•</div><div class="tl-text">Applying artistic finish</div></div>
+          <div class="tl-item" data-k="gallery"><div class="tl-dot">•</div><div class="tl-text">Preparing gallery image</div></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card preview-card">
+          <h4 style="margin:0 0 2px;font-size:15px;">Live preview</h4>
+          <p style="margin:0;font-size:13px;color:var(--ink-soft);">Finished pieces appear here as they complete.</p>
+          <div class="preview-grid" id="previewGrid"></div>
+        </div>
+
+        <div class="stat-cards">
+          <div class="mini-stat"><div class="val" id="statUploaded">80</div><div class="lbl">Uploaded</div></div>
+          <div class="mini-stat"><div class="val" id="statProcessed">0</div><div class="lbl">Processed</div></div>
+          <div class="mini-stat"><div class="val" id="statRemaining">80</div><div class="lbl">Remaining</div></div>
+          <div class="mini-stat"><div class="val" id="statTime">3 min</div><div class="lbl">Time left</div></div>
+        </div>
+
+        <button class="primary-btn block" id="continueBtn" style="margin-top:20px;" disabled>Continue to gallery</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PAGE 3 ================= -->
+  <div id="page3" class="hidden">
+    <div class="p3-shell">
+      <div>
+        <div class="g-header">
+          <div>
+            <h1 class="page-title" style="margin-bottom:2px;">My artwork gallery</h1>
+            <p class="page-sub" style="margin:0;">125 images generated</p>
+          </div>
+          <div class="g-toolbar">
+            <div class="search-box">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#94A3B8" stroke-width="2"/><path d="M21 21l-4-4" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/></svg>
+              <input type="text" id="searchInput" placeholder="Search artwork...">
+            </div>
+            <button class="ghost-btn">Filter</button>
+            <button class="ghost-btn" id="sortBtn">Sort: Newest</button>
+            <div class="icon-toggle">
+              <button class="active" id="gridBtn" title="Grid view">▦</button>
+              <button id="listBtn" title="List view">☰</button>
+            </div>
+            <button class="primary-btn" onclick="setStep(1)">+ Generate more</button>
+          </div>
+        </div>
+
+        <div class="masonry" id="galleryGrid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile bottom nav -->
+<div class="mobile-nav">
+  <a href="#" data-goto="1" class="mnav-link"><span>⬆️</span>Upload</a>
+  <a href="#" data-goto="2" class="mnav-link"><span>✨</span>Generating</a>
+  <a href="#" data-goto="3" class="mnav-link"><span>🖼️</span>Gallery</a>
+</div>
+<button class="fab" id="fabBtn">+</button>
+
+<!-- Preview modal -->
+<div class="modal-bg hidden" id="modalBg">
+  <div class="modal-box">
+    <div class="modal-img-wrap">
+      <button class="modal-close" id="modalClose">✕</button>
+      <button class="modal-nav" style="left:14px;" id="modalPrev">‹</button>
+      <img id="modalImg" src="" alt="">
+      <button class="modal-nav" style="right:14px;" id="modalNext">›</button>
+    </div>
+    <div class="modal-side">
+      <h3 style="margin:0;font-size:18px;" id="modalTitle">Artwork_014.png</h3>
+      <div class="modal-actions">
+        <button class="ghost-btn">⬇ Download</button>
+        <button class="ghost-btn">↗ Share</button>
+        <button class="ghost-btn">🖨 Print</button>
+      </div>
+      <div>
+        <h5 style="font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">AI details</h5>
+        <div class="ai-detail-row"><span>Detected size</span><b id="modalSize">21 × 29 cm</b></div>
+        <div class="ai-detail-row"><span>Enhancement level</span><b id="modalEnh">High</b></div>
+        <div class="ai-detail-row"><span>Original image</span><b>View</b></div>
+        <div class="ai-detail-row"><span>Generated image</span><b>Current</b></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk actions toolbar -->
+<div class="bulk-toolbar" id="bulkToolbar">
+  <span id="selCount">0 selected</span>
+  <button id="selectAllBtn">Select all</button>
+  <button>⬇ Download</button>
+  <button>📁 Create album</button>
+  <button>📄 Export PDF</button>
+  <button>↗ Share</button>
+  <button class="danger">🗑 Delete</button>
+</div>
+
+<script>
+/* ---------------- Artwork generator (procedural "kid drawing" SVGs) ---------------- */
+const PALETTES = [
+  ['#FDE68A','#F97316','#EF4444','#7C3AED'],
+  ['#93C5FD','#2563EB','#10B981','#FACC15'],
+  ['#FBCFE8','#EC4899','#A855F7','#60A5FA'],
+  ['#BBF7D0','#10B981','#2563EB','#FACC15'],
+  ['#FDBA74','#F97316','#7C3AED','#10B981'],
+  ['#FECACA','#EF4444','#FBBF24','#3B82F6']
+];
+function mulberry32(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function artworkSVG(seed){
+  const rnd = mulberry32(seed*97+13);
+  const pal = PALETTES[Math.floor(rnd()*PALETTES.length)];
+  const bg = '#FFFFFF';
+  let shapes = '';
+  const kind = Math.floor(rnd()*4);
+  // sun / circle
+  shapes += `<circle cx="${60+rnd()*140}" cy="${40+rnd()*60}" r="${20+rnd()*22}" fill="${pal[Math.floor(rnd()*4)]}" opacity="0.9"/>`;
+  // ground band
+  shapes += `<rect x="0" y="${210+rnd()*20}" width="240" height="80" fill="${pal[1]}" opacity="0.55"/>`;
+  if(kind===0){ // house
+    shapes += `<rect x="70" y="150" width="100" height="80" fill="${pal[2]}"/>`;
+    shapes += `<polygon points="60,150 120,100 180,150" fill="${pal[3]}"/>`;
+    shapes += `<rect x="105" y="185" width="30" height="45" fill="#fff"/>`;
+  } else if(kind===1){ // flowers
+    for(let i=0;i<5;i++){
+      const x = 20+i*45+rnd()*10, y=190+rnd()*20;
+      shapes += `<line x1="${x}" y1="${y}" x2="${x}" y2="240" stroke="#16A34A" stroke-width="4"/>`;
+      shapes += `<circle cx="${x}" cy="${y}" r="12" fill="${pal[i%4]}"/>`;
+    }
+  } else if(kind===2){ // scribble tree
+    shapes += `<rect x="115" y="150" width="14" height="80" fill="#92400E"/>`;
+    shapes += `<circle cx="122" cy="120" r="55" fill="${pal[3]}" opacity="0.85"/>`;
+    shapes += `<circle cx="90" cy="140" r="35" fill="${pal[2]}" opacity="0.7"/>`;
+  } else { // abstract scribbles
+    for(let i=0;i<7;i++){
+      shapes += `<circle cx="${rnd()*240}" cy="${rnd()*260}" r="${8+rnd()*20}" fill="${pal[i%4]}" opacity="0.75"/>`;
+    }
+  }
+  // crayon texture strokes
+  let strokes='';
+  for(let i=0;i<4;i++){
+    strokes += `<path d="M${rnd()*240},${rnd()*260} q ${40-rnd()*80},${40-rnd()*80} ${40-rnd()*80},${40-rnd()*80}" stroke="${pal[(i+1)%4]}" stroke-width="3" fill="none" opacity="0.5" stroke-linecap="round"/>`;
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="260" viewBox="0 0 240 260">
+    <rect width="240" height="260" fill="${bg}"/>
+    ${shapes}${strokes}
+  </svg>`;
+  return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
+}
+
+/* ---------------- Global state ---------------- */
+let currentStep = 1;
+// Store real uploaded File objects alongside preview data
+let uploadedFiles = [];   // { name, progress, img (dataURL preview), file (File object) }
+let generatedResults = []; // { name, img (base64 data URL), date }
+
+function setStep(n){
+  currentStep = n;
+  document.querySelectorAll('.step').forEach(s=>{
+    const num = +s.dataset.step;
+    s.classList.remove('active','done');
+    if(num<n) s.classList.add('done');
+    if(num===n) s.classList.add('active');
+    s.querySelector('.dot').textContent = num<n ? '✓' : num;
+  });
+  document.getElementById('page1').classList.toggle('hidden', n!==1);
+  document.getElementById('page2').classList.toggle('hidden', n!==2);
+  document.getElementById('page3').classList.toggle('hidden', n!==3);
+  document.querySelectorAll('.mnav-link').forEach(a=>a.classList.toggle('active', +a.dataset.goto===n));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('.mnav-link').forEach(a=>a.addEventListener('click',e=>{e.preventDefault(); if(+a.dataset.goto<=Math.max(currentStep,2)) setStep(+a.dataset.goto);}));
+document.getElementById('fabBtn').addEventListener('click',()=>setStep(1));
+
+/* ---------------- PAGE 1 logic ---------------- */
+const fileGrid = document.getElementById('fileGrid');
+
+function renderFileGrid(){
+  fileGrid.innerHTML = uploadedFiles.map((f,i)=>`
+    <div class="file-card">
+      <button class="remove-btn" data-i="${i}">✕</button>
+      <div class="file-thumb"><img src="${f.img}" alt=""></div>
+      <div class="file-name">${f.name}</div>
+      <div class="progress-track"><div class="progress-fill" style="width:${f.progress}%"></div></div>
+    </div>`).join('');
+  document.getElementById('fileCount').textContent = `${uploadedFiles.length} of 5`;
+
+  // Update sidebar stats
+  const totalSize = uploadedFiles.reduce((sum, f) => sum + (f.file ? f.file.size : 0), 0);
+  const sizeMB = (totalSize / (1024 * 1024)).toFixed(1);
+  document.querySelector('.sidebar .stat-value.blue').textContent = uploadedFiles.length + ' photos';
+  document.querySelectorAll('.sidebar .stat-row')[1].querySelector('.stat-value').textContent = (5 - uploadedFiles.length) + ' slots';
+  document.querySelectorAll('.sidebar .stat-row')[2].querySelector('.stat-value').textContent = sizeMB + ' MB';
+  document.querySelector('.sidebar .stat-value.violet').textContent = '~30 sec';
+
+  fileGrid.querySelectorAll('.remove-btn').forEach(b=>b.addEventListener('click',e=>{
+    uploadedFiles.splice(+b.dataset.i,1); renderFileGrid();
+  }));
+}
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('click',()=>fileInput.click());
+['dragenter','dragover'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.remove('drag');}));
+dropzone.addEventListener('drop',e=>{ handleFiles(e.dataTransfer.files); });
+fileInput.addEventListener('change',e=>handleFiles(e.target.files));
+
+function handleFiles(list){
+  const remaining = 5 - uploadedFiles.length;
+  if (remaining <= 0) {
+    alert('Maximum 5 photos allowed. Remove some to add more.');
+    return;
+  }
+  Array.from(list).slice(0, remaining).forEach((f)=>{
+    const reader = new FileReader();
+    const entry = { name: f.name, progress: 0, img: '', file: f };
+    uploadedFiles.push(entry);
+    renderFileGrid();
+    reader.onload = ev => {
+      entry.img = ev.target.result;
+      // Animate upload progress
+      let p = 0;
+      const timer = setInterval(() => {
+        p += 15 + Math.random() * 20;
+        entry.progress = Math.min(100, Math.round(p));
+        renderFileGrid();
+        if (entry.progress >= 100) clearInterval(timer);
+      }, 180);
+    };
+    reader.readAsDataURL(f);
+  });
+}
+
+document.getElementById('uploadGenerateBtn').addEventListener('click',()=>{
+  if (uploadedFiles.length === 0) {
+    alert('Please upload at least one artwork image first.');
+    return;
+  }
+  setStep(2);
+  startProcessing();
+});
+
+/* ---------------- PAGE 2 logic — REAL API CALLS ---------------- */
+const previewGrid = document.getElementById('previewGrid');
+
+function updateProgress(pct) {
+  document.getElementById('barFill').style.width = pct + '%';
+  document.getElementById('barPct').textContent = Math.round(pct) + '%';
+  document.getElementById('orbPct').textContent = Math.round(pct) + '%';
+  document.getElementById('orbRing').style.setProperty('--pct', pct);
+}
+
+function markCurrent(k){
+  const el = document.querySelector(`.tl-item[data-k="${k}"]`);
+  if (!el) return;
+  el.classList.remove('waiting','done'); el.classList.add('current'); el.querySelector('.tl-dot').textContent='•';
+}
+function markDone(k){
+  const el = document.querySelector(`.tl-item[data-k="${k}"]`);
+  if (!el) return;
+  el.classList.remove('waiting','current'); el.classList.add('done'); el.querySelector('.tl-dot').textContent='✓';
+}
+
+async function enhanceImages(files) {
+  const formData = new FormData();
+  files.forEach(f => formData.append('images', f));
+  const res = await fetch('/api/enhance', { method: 'POST', body: formData });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || 'API error');
+  return 'data:image/png;base64,' + data.image;
+}
+
+async function startProcessing() {
+  document.getElementById('continueBtn').disabled = true;
+  generatedResults = [];
+
+  // Reset timeline
+  const timelineOrder = ['upload','detect','crop','bg','enhance','gallery'];
+  timelineOrder.forEach(k => {
+    const el = document.querySelector(`.tl-item[data-k="${k}"]`);
+    el.classList.remove('done','current');
+    el.classList.add('waiting');
+    el.querySelector('.tl-dot').textContent = '•';
+  });
+
+  const totalFiles = uploadedFiles.length;
+  document.getElementById('statUploaded').textContent = totalFiles;
+  document.getElementById('statProcessed').textContent = '0';
+  document.getElementById('statRemaining').textContent = '1';
+  document.getElementById('statTime').textContent = '~30 sec';
+
+  // Single preview slot — we produce 1 output
+  previewGrid.innerHTML = `<div class="preview-slot" id="slot0"></div>`;
+
+  // Step 1: Upload done
+  markDone('upload');
+  updateProgress(10);
+  await new Promise(r => setTimeout(r, 300));
+
+  // Step 2: Detecting artwork
+  markCurrent('detect');
+  updateProgress(15);
+  await new Promise(r => setTimeout(r, 400));
+  markDone('detect');
+
+  // Step 3: Cropping
+  markCurrent('crop');
+  updateProgress(20);
+  await new Promise(r => setTimeout(r, 400));
+  markDone('crop');
+
+  // Step 4-6: Send ALL images in ONE API call
+  markCurrent('bg');
+  updateProgress(30);
+
+  // Start a progress animation while waiting for the API
+  let fakePct = 30;
+  const progressTimer = setInterval(() => {
+    fakePct = Math.min(90, fakePct + 1 + Math.random() * 2);
+    updateProgress(fakePct);
+
+    // Advance timeline steps visually
+    if (fakePct > 50) { markDone('bg'); markCurrent('enhance'); }
+    if (fakePct > 75) { markDone('enhance'); markCurrent('gallery'); }
+  }, 500);
+
+  try {
+    // Collect all real File objects
+    const realFiles = uploadedFiles.map(f => f.file).filter(Boolean);
+    console.log(`Sending ${realFiles.length} photo(s) to OpenAI for combined enhancement…`);
+
+    const resultImg = await enhanceImages(realFiles);
+
+    clearInterval(progressTimer);
+
+    // Store the single result
+    generatedResults.push({
+      id: 0,
+      name: 'artwork_enhanced.png',
+      img: resultImg,
+      fav: false,
+      h: 260,
+      date: Date.now()
+    });
+
+    // Show in preview
+    const slot = document.getElementById('slot0');
+    if (slot) {
+      slot.classList.add('filled');
+      slot.innerHTML = `<img src="${resultImg}" alt="">`;
+    }
+
+    document.getElementById('statProcessed').textContent = '1';
+    document.getElementById('statRemaining').textContent = '0';
+    document.getElementById('statTime').textContent = '0 sec';
+    console.log('✓ Gallery image generated successfully!');
+
+  } catch (err) {
+    clearInterval(progressTimer);
+    console.error('API error:', err.message);
+    alert('Failed to generate artwork: ' + err.message + '\n\nCheck the server console for details.');
+  }
+
+  // Finish up
+  updateProgress(100);
+  timelineOrder.forEach(k => markDone(k));
+  document.getElementById('continueBtn').disabled = false;
+
+  // Auto-transition to page 3
+  setTimeout(() => {
+    if (!document.getElementById('continueBtn').disabled) {
+      document.getElementById('continueBtn').click();
+    }
+  }, 800);
+}
+
+document.getElementById('continueBtn').addEventListener('click',()=>{
+  if(!document.getElementById('continueBtn').disabled) {
+    // Populate gallery with the single generated result
+    galleryItems = generatedResults.length > 0 ? generatedResults : galleryItems;
+    selected.clear();
+    renderGallery();
+    document.querySelector('#page3 .page-sub').textContent = generatedResults.length === 1 ? '1 gallery-ready image generated' : generatedResults.length + ' images generated';
+    setStep(3);
+  }
+});
+
+/* ---------------- PAGE 3 logic ---------------- */
+const galleryGrid = document.getElementById('galleryGrid');
+let galleryItems = [];
+let selected = new Set();
+
+function downloadArt(id) {
+  const it = galleryItems.find(x => x.id === id);
+  if (!it) return;
+  const a = document.createElement('a');
+  a.href = it.img;
+  a.download = it.name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function renderGallery(filterText=''){
+  const list = galleryItems.filter(it=>it.name.toLowerCase().includes(filterText.toLowerCase()));
+  galleryGrid.innerHTML = list.map(it=>`
+    <div class="art-card ${selected.has(it.id)?'selected':''}" data-id="${it.id}">
+      <div class="tape"></div>
+      <button class="art-check">${selected.has(it.id)?'✓':''}</button>
+      <button class="art-fav ${it.fav?'on':''}" data-fav="${it.id}">${it.fav?'♥':'♡'}</button>
+      <img src="${it.img}" style="height:${it.h}px;object-fit:cover;" alt="${it.name}">
+      <div class="art-overlay">
+        <span class="fname">${it.name}</span>
+        <div class="acts">
+          <button title="Download" onclick="event.stopPropagation();downloadArt(${it.id})">⬇</button>
+          <button title="Share">↗</button>
+        </div>
+      </div>
+    </div>`).join('');
+
+  galleryGrid.querySelectorAll('.art-card').forEach(card=>{
+    const id = +card.dataset.id;
+    card.addEventListener('click', e=>{
+      if(e.target.closest('.art-fav')) return;
+      if(e.target.closest('.art-check') || e.shiftKey){
+        toggleSelect(id);
+      } else {
+        openModal(id);
+      }
+    });
+  });
+  galleryGrid.querySelectorAll('.art-fav').forEach(b=>{
+    b.addEventListener('click', e=>{
+      e.stopPropagation();
+      const id = +b.dataset.fav;
+      const it = galleryItems.find(x=>x.id===id);
+      it.fav = !it.fav;
+      renderGallery(document.getElementById('searchInput').value);
+    });
+  });
+  galleryGrid.querySelectorAll('.art-check').forEach(b=>{
+    b.addEventListener('click', e=>{ e.stopPropagation(); toggleSelect(+e.target.closest('.art-card').dataset.id); });
+  });
+}
+function toggleSelect(id){
+  if(selected.has(id)) selected.delete(id); else selected.add(id);
+  renderGallery(document.getElementById('searchInput').value);
+  updateBulkToolbar();
+}
+function updateBulkToolbar(){
+  const bar = document.getElementById('bulkToolbar');
+  bar.classList.toggle('show', selected.size>0);
+  document.getElementById('selCount').textContent = selected.size+' selected';
+}
+document.getElementById('selectAllBtn').addEventListener('click',()=>{
+  if(selected.size === galleryItems.length){ selected.clear(); } else { galleryItems.forEach(it=>selected.add(it.id)); }
+  renderGallery(document.getElementById('searchInput').value); updateBulkToolbar();
+});
+document.getElementById('searchInput').addEventListener('input', e=>renderGallery(e.target.value));
+document.getElementById('sortBtn').addEventListener('click', function(){
+  if(this.textContent.includes('Newest')){
+    galleryItems.sort((a,b)=>a.date-b.date); this.textContent='Sort: Oldest';
+  } else {
+    galleryItems.sort((a,b)=>b.date-a.date); this.textContent='Sort: Newest';
+  }
+  renderGallery(document.getElementById('searchInput').value);
+});
+document.getElementById('gridBtn').addEventListener('click',function(){
+  this.classList.add('active'); document.getElementById('listBtn').classList.remove('active');
+  galleryGrid.classList.remove('list-mode');
+});
+document.getElementById('listBtn').addEventListener('click',function(){
+  this.classList.add('active'); document.getElementById('gridBtn').classList.remove('active');
+});
+
+/* modal */
+let modalIdx = 0;
+function openModal(id){
+  modalIdx = galleryItems.findIndex(x=>x.id===id);
+  if (modalIdx < 0) modalIdx = 0;
+  showModal();
+  document.getElementById('modalBg').classList.remove('hidden');
+}
+function showModal(){
+  if (galleryItems.length === 0) return;
+  const it = galleryItems[modalIdx];
+  document.getElementById('modalImg').src = it.img;
+  document.getElementById('modalTitle').textContent = it.name;
+  document.getElementById('modalSize').textContent = '1024 × 1024 px';
+  document.getElementById('modalEnh').textContent = 'AI Enhanced';
+}
+document.getElementById('modalClose').addEventListener('click',()=>document.getElementById('modalBg').classList.add('hidden'));
+document.getElementById('modalBg').addEventListener('click',e=>{ if(e.target.id==='modalBg') document.getElementById('modalBg').classList.add('hidden'); });
+document.getElementById('modalPrev').addEventListener('click',()=>{ modalIdx = (modalIdx-1+galleryItems.length)%galleryItems.length; showModal(); });
+document.getElementById('modalNext').addEventListener('click',()=>{ modalIdx = (modalIdx+1)%galleryItems.length; showModal(); });
+
+/* init — start on step 1 with empty upload area */
+setStep(1);
+renderFileGrid();
+</script>
+</body>
+</html>
